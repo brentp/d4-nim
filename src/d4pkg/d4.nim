@@ -20,6 +20,13 @@ proc open*(d4:var D4, path:string, mode="r"): bool {.discardable.} =
     d4.chromosomes = d4.fill_chromosomes
   return d4.c != nil
 
+proc close*(d4: var D4) =
+  ## close d4 file and release memory.
+  if 0 != d4.c.d4_close:
+    raise newException(IOError, "error closing d4 file")
+  d4.chromosomes = nil
+  d4.c = nil
+
 proc same(a:string, b:string): bool {.inline.} =
   if a.len < b.len: return false
   for i, c in b:
@@ -75,5 +82,7 @@ when isMainModule:
   doAssert vals.len.uint32 == 249240621'u32 - 249_200_100'u32
   echo vals.len
   echo vals
+
+  d4f.close
 
 
