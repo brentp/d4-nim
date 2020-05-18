@@ -7,16 +7,16 @@ type D4* = object
   chromosomes: OrderedTableRef[string, uint32]
 
 type task_ctx = object
-  name: string
   count: uint32
   sum: float64
+  name: array[20, char]
 
 proc `$`(c:task_ctx): string =
   return &"task_ctx(name:{$c.name}, count: {c.count}, sum: {c.sum})"
 
 proc init(h:ptr d4_task_part_t, extra_data:pointer): pointer {.cdecl.} =
-  var ctx = task_ctx(name: newString(20))
-  doAssert h.d4_task_chrom(ctx.name[0].addr, ctx.name.len) >= 0
+  var ctx = task_ctx(sum:0'f64, count:0'u32) #name: newString(20))
+  doAssert h.d4_task_chrom(ctx.name[0].addr, ctx.name.len - 1) >= 0
   var l:uint32
   var r:uint32
   doAssert h.d4_task_range(l.addr, r.addr) >= 0
@@ -24,7 +24,7 @@ proc init(h:ptr d4_task_part_t, extra_data:pointer): pointer {.cdecl.} =
   #GC_ref(ctx)
   return ctx.addr.pointer
 
-proc map*(d4:var D4, map_fn:proc(pos:uint32, values:seq[int32]): float64, n_cpus:int|uint32=1, chunk_size:int|uint32=10_000_000) =
+proc map*(d4:var D4, map_fn:proc(pos:uint32, values:seq[int32]): float64, n_cpus:int|uint32=8, chunk_size:int|uint32=10_000_000) =
 
   proc process(h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer): cint {.cdecl.} =
     echo "process"
@@ -34,16 +34,14 @@ proc map*(d4:var D4, map_fn:proc(pos:uint32, values:seq[int32]): float64, n_cpus
     var
       pos: uint32
       r: uint32
-      res = cast[task_ctx](task_ctx_p)
+      ctx = cast[task_ctx](task_ctx_p)
     doAssert h.d4_task_range(pos.addr, r.addr) >= 0
-    echo "pos:", pos, " r:", r, " res:", res #== nil
-    #echo " res:", res[]
-    #echo " res.name:", res.name[0]
-    echo "AFTER"
+    doAssert h.d4_task_chrom(ctx.name[0].addr, ctx.name.len) >= 0
+    echo "pos:", pos, " r:", r, " ctx:", ctx #== nil
 
-    var buffer = newSeqUninitialized[int32](10_000)
     while pos < r:
-      echo "pos:", pos, " r:", r, " buffer.len:", buffer.len
+      var buffer : array[10_000, int32]
+      #echo "pos:", pos, " r:", r, " buffer.len:", buffer.len
       var count = h.d4_task_read_values(pos, buffer[0].addr, buffer.len)
       if count < 0:
         var error = newString(128)
@@ -51,12 +49,11 @@ proc map*(d4:var D4, map_fn:proc(pos:uint32, values:seq[int32]): float64, n_cpus
         break
       else:
         pos += count.uint32
-        echo "count:", count, " buffer.len:", buffer.len
 
         for i in 0..<count:
-          res.sum += buffer[i].float64
+          ctx.sum += buffer[i].float64
 
-    echo "sum:", res.sum
+    echo "after:", ctx
     return 0
 
   proc clean(tasks: ptr d4_task_part_result_t, count: csize, extra_data: pointer): cint {.cdecl.} =
