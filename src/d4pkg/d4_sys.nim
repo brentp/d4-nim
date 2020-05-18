@@ -109,11 +109,11 @@ type
     mode*: d4_task_mode_t
     part_size_limit*: uint32
     num_cpus*: uint32
-    part_context_create_cb*: proc (handle: ptr d4_task_part_t; extra_data: pointer): pointer
+    part_context_create_cb*: proc (handle: ptr d4_task_part_t; extra_data: pointer): pointer {.cdecl.}
     part_process_cb*: proc (handle: ptr d4_task_part_t; task_context: pointer;
-                          extra_data: pointer): cint
+                          extra_data: pointer): cint {.cdecl.}
     part_finalize_cb*: proc (tasks: ptr d4_task_part_result_t; count: csize;
-                           extra_data: pointer): cint
+                           extra_data: pointer): cint {.cdecl.}
     extra_data*: pointer
 
 proc d4_file_run_task*(handle: ptr d4_file_t; task: ptr d4_task_desc_t): cint {.d4.}
