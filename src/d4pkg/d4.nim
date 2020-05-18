@@ -15,29 +15,29 @@ proc `$`(c:task_ctx): string =
   return &"task_ctx(name:{$c.name}, count: {c.count}, sum: {c.sum})"
 
 proc init(h:ptr d4_task_part_t, extra_data:pointer): pointer {.cdecl.} =
-  var ctx = task_ctx(sum:0'f64, count:0'u32) #name: newString(20))
+  var ctx = cast[ptr task_ctx](alloc0(sizeof(task_ctx)))
   doAssert h.d4_task_chrom(ctx.name[0].addr, ctx.name.len - 1) >= 0
   var l:uint32
   var r:uint32
   doAssert h.d4_task_range(l.addr, r.addr) >= 0
   ctx.count = r - l
-  #GC_ref(ctx)
-  return ctx.addr.pointer
+  return ctx.pointer
 
 proc map*(d4:var D4, map_fn:proc(pos:uint32, values:seq[int32]): float64, n_cpus:int|uint32=8, chunk_size:int|uint32=10_000_000) =
 
   proc process(h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer): cint {.cdecl.} =
-    echo "process"
+    #echo "process"
     if task_ctx_p == nil:
-      echo "NULL:"
+      #echo "NULL:"
       return 1
     var
       pos: uint32
       r: uint32
-      ctx = cast[task_ctx](task_ctx_p)
     doAssert h.d4_task_range(pos.addr, r.addr) >= 0
-    doAssert h.d4_task_chrom(ctx.name[0].addr, ctx.name.len) >= 0
-    echo "pos:", pos, " r:", r, " ctx:", ctx #== nil
+    var ctx = cast[ptr task_ctx](task_ctx_p)
+    #echo "deref"
+    #doAssert h.d4_task_chrom(ctx.name[0].addr, ctx.name.len) >= 0
+    #echo "pos:", pos, " r:", r, " ctx:", ctx[]
 
     while pos < r:
       var buffer : array[10_000, int32]
@@ -53,11 +53,23 @@ proc map*(d4:var D4, map_fn:proc(pos:uint32, values:seq[int32]): float64, n_cpus
         for i in 0..<count:
           ctx.sum += buffer[i].float64
 
-    echo "after:", ctx
     return 0
 
-  proc clean(tasks: ptr d4_task_part_result_t, count: csize, extra_data: pointer): cint {.cdecl.} =
-    echo "TODO: clean up!!"
+  proc clean(d4_tasks: ptr d4_task_part_result_t, task_count: csize, extra_data: pointer): cint {.cdecl.} =
+    var sum: float64
+    var count: float64
+
+    echo "cleaning. count:", task_count
+    var tasks = cast[ptr UncheckedArray[d4_task_part_result_t]](d4_tasks)
+    for i in 0..<task_count.int:
+      var tctx = tasks[i].task_context
+      let ctx = cast[ptr task_ctx](tctx)
+      echo ctx[]
+      sum += ctx.sum
+      count += ctx.count.float64
+      dealloc(tctx)
+
+    echo "mean depth:", sum / count
     return 0
 
   var task = d4_task_desc_t(mode: D4_TASK_READ,
@@ -157,7 +169,7 @@ when isMainModule:
   d4f.close
   doAssert d4f.open("hg002.d4")
 
-  d4f.map(fn)
+  d4f.map(fn, n_cpus=8)
 
   d4f.close
 
