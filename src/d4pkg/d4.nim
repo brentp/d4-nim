@@ -23,37 +23,36 @@ proc init(h:ptr d4_task_part_t, extra_data:pointer): pointer {.cdecl.} =
   ctx.count = r - l
   return ctx.pointer
 
-proc map*(d4:var D4, map_fn:proc(pos:uint32, values:seq[int32]): float64, n_cpus:int|uint32=8, chunk_size:int|uint32=10_000_000) =
+type d4_call_back* = (proc(pos:uint32, values: seq[int32]): float64)
 
-  proc process(h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer): cint {.cdecl.} =
-    #echo "process"
-    if task_ctx_p == nil:
-      #echo "NULL:"
-      return 1
-    var
-      pos: uint32
-      r: uint32
-    doAssert h.d4_task_range(pos.addr, r.addr) >= 0
-    var ctx = cast[ptr task_ctx](task_ctx_p)
-    #echo "deref"
-    #doAssert h.d4_task_chrom(ctx.name[0].addr, ctx.name.len) >= 0
-    #echo "pos:", pos, " r:", r, " ctx:", ctx[]
+proc process(h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer): cint {.cdecl.} =
+  setupForeignThreadGc()
+  if task_ctx_p == nil:
+    return 1
+  var
+    pos: uint32
+    r: uint32
+  doAssert h.d4_task_range(pos.addr, r.addr) >= 0
+  var ctx = cast[ptr task_ctx](task_ctx_p)
 
-    while pos < r:
-      var buffer : array[10_000, int32]
-      #echo "pos:", pos, " r:", r, " buffer.len:", buffer.len
-      var count = h.d4_task_read_values(pos, buffer[0].addr, buffer.len)
-      if count < 0:
-        var error = newString(128)
-        echo d4_error_message(error, error.len)
-        break
-      else:
-        pos += count.uint32
+  let map_fn = cast[ptr d4_call_back](extra_data)[]
+  var buffer = newSeq[int32](10_000)
 
-        for i in 0..<count:
-          ctx.sum += buffer[i].float64
+  while pos < r:
+    var count = h.d4_task_read_values(pos, buffer[0].addr, buffer.len)
+    if count < 0:
+      var error = newString(128)
+      echo d4_error_message(error, error.len)
+      return count.cint
+    else:
+      if count.int != buffer.len: buffer.setLen(count)
+      ctx.sum += map_fn(pos, buffer)
+      pos += count.uint32
 
-    return 0
+  tearDownForeignThreadGc()
+  return 0
+
+proc map*(d4:var D4, map_fn:ptr d4_call_back, n_cpus:int|uint32=8, chunk_size:int|uint32=10_000_000) =
 
   proc clean(d4_tasks: ptr d4_task_part_result_t, task_count: csize, extra_data: pointer): cint {.cdecl.} =
     var sum: float64
@@ -64,7 +63,6 @@ proc map*(d4:var D4, map_fn:proc(pos:uint32, values:seq[int32]): float64, n_cpus
     for i in 0..<task_count.int:
       var tctx = tasks[i].task_context
       let ctx = cast[ptr task_ctx](tctx)
-      echo ctx[]
       sum += ctx.sum
       count += ctx.count.float64
       dealloc(tctx)
@@ -78,7 +76,7 @@ proc map*(d4:var D4, map_fn:proc(pos:uint32, values:seq[int32]): float64, n_cpus
                             part_context_create_cb: init,
                             part_finalize_cb: clean,
                             part_process_cb: process,
-                            extra_data: nil)
+                            extra_data: map_fn.pointer)
 
   echo "created task:", task
   var res = d4.c.d4_file_run_task(task.addr)
@@ -164,12 +162,12 @@ when isMainModule:
   #echo vals.len
   #echo vals
 
-  proc fn(pos:uint32, values:seq[int32]): float64 =
-    return values.sum.float32
+  var fn:d4_call_back = proc (pos:uint32, values:seq[int32]): float64 =
+    return values.sum.float64
   d4f.close
   doAssert d4f.open("hg002.d4")
 
-  d4f.map(fn, n_cpus=8)
+  d4f.map(fn.addr, n_cpus=8)
 
   d4f.close
 
