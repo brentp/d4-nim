@@ -23,9 +23,9 @@ proc init(h:ptr d4_task_part_t, extra_data:pointer): pointer {.cdecl.} =
   ctx.count = r - l
   return ctx.pointer
 
-type d4_call_back* = (proc(pos:uint32, values: seq[int32]): float64)
+type d4_call_back*[T] = proc(pos:uint32, values: seq[int32]): T
 
-proc process(h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer): cint {.cdecl.} =
+proc process[T](h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer): cint {.cdecl.} =
   setupForeignThreadGc()
   if task_ctx_p == nil:
     return 1
@@ -35,7 +35,7 @@ proc process(h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer): c
   doAssert h.d4_task_range(pos.addr, r.addr) >= 0
   var ctx = cast[ptr task_ctx](task_ctx_p)
 
-  let map_fn = cast[ptr d4_call_back](extra_data)[]
+  let map_fn = cast[ptr d4_call_back[T]](extra_data)[]
   var buffer = newSeq[int32](10_000)
 
   while pos < r:
@@ -52,7 +52,8 @@ proc process(h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer): c
   tearDownForeignThreadGc()
   return 0
 
-proc map*(d4:var D4, map_fn:d4_call_back, n_cpus:int|uint32=8, chunk_size:int|uint32=10_000_000) =
+proc map*[T](d4:var D4, map_fn:d4_call_back[T], n_cpus:int|uint32=8, chunk_size:int|uint32=10_000_000): seq[T] =
+  var outer_result: seq[T]
 
   proc clean(d4_tasks: ptr d4_task_part_result_t, task_count: csize, extra_data: pointer): cint {.cdecl.} =
     var sum: float64
@@ -75,7 +76,7 @@ proc map*(d4:var D4, map_fn:d4_call_back, n_cpus:int|uint32=8, chunk_size:int|ui
                             num_cpus: n_cpus.uint32,
                             part_context_create_cb: init,
                             part_finalize_cb: clean,
-                            part_process_cb: process,
+                            part_process_cb: process[T],
                             extra_data: map_fn.unsafeAddr.pointer)
 
   echo "created task:", task
@@ -162,12 +163,12 @@ when isMainModule:
   #echo vals.len
   #echo vals
 
-  var fn = proc(pos:uint32, values:seq[int32]): float64 =
+  var fn:d4_call_back[float64] = proc(pos:uint32, values:seq[int32]): float64 =
     return values.sum.float64
   d4f.close
   doAssert d4f.open("hg002.d4")
 
-  d4f.map(fn, n_cpus=8)
+  echo d4f.map(fn, n_cpus=8)
 
   d4f.close
 
