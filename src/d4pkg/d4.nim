@@ -52,7 +52,7 @@ proc process(h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer): c
   tearDownForeignThreadGc()
   return 0
 
-proc map*(d4:var D4, map_fn:ptr d4_call_back, n_cpus:int|uint32=8, chunk_size:int|uint32=10_000_000) =
+proc map*(d4:var D4, map_fn:d4_call_back, n_cpus:int|uint32=8, chunk_size:int|uint32=10_000_000) =
 
   proc clean(d4_tasks: ptr d4_task_part_result_t, task_count: csize, extra_data: pointer): cint {.cdecl.} =
     var sum: float64
@@ -76,7 +76,7 @@ proc map*(d4:var D4, map_fn:ptr d4_call_back, n_cpus:int|uint32=8, chunk_size:in
                             part_context_create_cb: init,
                             part_finalize_cb: clean,
                             part_process_cb: process,
-                            extra_data: map_fn.pointer)
+                            extra_data: map_fn.unsafeAddr.pointer)
 
   echo "created task:", task
   var res = d4.c.d4_file_run_task(task.addr)
@@ -162,12 +162,12 @@ when isMainModule:
   #echo vals.len
   #echo vals
 
-  var fn:d4_call_back = proc (pos:uint32, values:seq[int32]): float64 =
+  var fn = proc(pos:uint32, values:seq[int32]): float64 =
     return values.sum.float64
   d4f.close
   doAssert d4f.open("hg002.d4")
 
-  d4f.map(fn.addr, n_cpus=8)
+  d4f.map(fn, n_cpus=8)
 
   d4f.close
 
