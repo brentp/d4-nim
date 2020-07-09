@@ -16,7 +16,7 @@ type                          ## !< The dictionary that is defined by a range of
 ## !< The dictionary data for simple ranage dictionary
 
 type
-  d4_simple_range_dict_t* {.bycopy.} = object
+  d4_simple_range_dict_t* = object
     low*: int32
     high*: int32
 
@@ -24,7 +24,7 @@ type
 ## !< The dictionary data or value map dictionary
 
 type
-  d4_value_map_dict_t* {.bycopy.} = object
+  d4_value_map_dict_t* = object
     size*: csize
     values*: ptr int32
 
@@ -32,7 +32,7 @@ type
 ## !< The metadata of a D4 file
 
 type
-  INNER_C_UNION_d4_43* {.bycopy.} = object {.union.}
+  dict_data_t* = object {.union.}
     simple_range*: d4_simple_range_dict_t
     value_map*: d4_value_map_dict_t
 
@@ -42,7 +42,7 @@ type
     chrom_name*: cstringArray  ## !< List o fchromosome sizes
     chrom_size*: ptr uint32   ## !< Dictionary type
     dict_type*: d4_dict_type_t ## !< Dictionary data
-    dict_data*: INNER_C_UNION_d4_43
+    dict_data*: dict_data_t
 
 
 ## !< A value interval
@@ -65,6 +65,7 @@ proc d4_close*(handle: ptr d4_file_t): cint {.d4.}
 proc d4_file_load_metadata*(handle: ptr d4_file_t; buf: ptr d4_file_metadata_t): cint {.d4.}
 proc d4_file_update_metadata*(handle: ptr d4_file_t;
                              metadata: ptr d4_file_metadata_t): cint {.d4.}
+
 proc d4_file_metadata_clear*(meta: ptr d4_file_metadata_t) {.inline.} =
   if nil == meta:
     return
