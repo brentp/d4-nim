@@ -1,10 +1,11 @@
 import ./d4_sys
 import tables
+export tables
 import strformat
 
 type D4* = object
   c: ptr d4_file_t
-  chromosomes: OrderedTableRef[string, uint32]
+  chromosomes*: OrderedTableRef[string, uint32]
 
 type Interval* = d4_interval_t
 
@@ -170,14 +171,12 @@ iterator query*(d4:var D4, chrom:string, start:int|uint32=0, stop:int|uint32=uin
 proc values*(d4:var D4, chrom:string, start:int|uint32=0, stop:int|uint32=uint32.high): seq[int32] =
 
   var stop = min(d4.chromosomes[chrom], stop.uint32)
-  var start = start.uint32
-  result = newSeqUninitialized[int32](stop - start)
-  for iv in d4.query(chrom, start, stop):
-    for p in iv.start ..< iv.stop:
-      result[p - start] = iv.value
+  check(d4_file_seek(d4.c, chrom.cstring, start.uint32), "d4:error seeking to position: " & $start)
+
+  result = newSeq[int32](stop - start.uint32)
+  check(d4.c.d4_file_read_values(result[0].addr, result.len), "d4: error reading values")
 
 proc write*(d4:var D4, chrom:string, pos:uint32|int, values:var seq[int32]) =
-  echo "writing pos:", pos
   # write a dense seq of values starting at pos
   check(d4_file_seek(d4.c, chrom.cstring, pos.uint32), "d4:error seeking to position: " & $pos & " writes must be in order")
   check(d4_file_write_values(d4.c, values[0].addr, values.len), "d4:error writing values to position: " & $pos)
@@ -190,6 +189,7 @@ proc write*(d4:var D4, chrom:string, values:seq[Interval]) =
 when isMainModule:
   import math
   var d4f:D4
+  #[
   doAssert d4f.open("hg002.d4")
   echo d4f.chromosomes # ordered table
   echo d4f.chromosomes["1"]
@@ -229,12 +229,13 @@ when isMainModule:
 
   d4f.close
 
+  ]# 
   doAssert d4f.open("test.d4", mode="r")
   echo d4f.chromosomes
 
-
-  var r = d4f.values("chr1", 0, 60)
+  var r = d4f.values("chr1", 0, 50)
   doAssert r[1] == 1'i32
   doAssert r[40] == 2'i32
-  r = d4f.values("chr2", 0, 60)
-  doAssert r[12] == 2'i32
+  var o = d4f.values("chr2", 0, 61)
+  echo o
+  doAssert o[12] == 2'i32
