@@ -236,6 +236,6 @@ when isMainModule:
   var r = d4f.values("chr1", 0, 50)
   doAssert r[1] == 1'i32
   doAssert r[40] == 2'i32
-  var o = d4f.values("chr2", 0, 61)
+  var o = d4f.values("chr2", 0, 60)
   echo o
   doAssert o[12] == 2'i32
