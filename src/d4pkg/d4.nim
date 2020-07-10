@@ -169,12 +169,18 @@ iterator query*(d4:var D4, chrom:string, start:int|uint32=0, stop:int|uint32=uin
     if count.int < data.len: break
 
 proc values*(d4:var D4, chrom:string, start:int|uint32=0, stop:int|uint32=uint32.high): seq[int32] =
+  ## extract values for the requested region.
 
   var stop = min(d4.chromosomes[chrom], stop.uint32)
   check(d4_file_seek(d4.c, chrom.cstring, start.uint32), "d4:error seeking to position: " & $start)
 
-  result = newSeq[int32](stop - start.uint32)
+  result = newSeqUninitialized[int32](stop - start.uint32)
   check(d4.c.d4_file_read_values(result[0].addr, result.len), "d4: error reading values")
+
+proc values*(d4:var D4, chrom: string, pos:uint32, values: var seq[int32]) =
+  # extract values from pos to pos + values.len without allocating memory.
+  check(d4_file_seek(d4.c, chrom.cstring, pos), "d4:error seeking to position: " & $pos)
+  check(d4.c.d4_file_read_values(values[0].addr, values.len), "d4: error reading values")
 
 proc write*(d4:var D4, chrom:string, pos:uint32|int, values:var seq[int32]) =
   # write a dense seq of values starting at pos
