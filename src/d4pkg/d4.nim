@@ -25,10 +25,10 @@ proc check(value:cint|csize_t, msg:string) {.inline.} =
 
 proc init(h:ptr d4_task_part_t, extra_data:pointer): pointer {.cdecl.} =
   var ctx = cast[ptr task_ctx](alloc0(sizeof(task_ctx)))
-  doAssert h.d4_task_chrom(ctx.name[0].addr, ctx.name.len - 1) >= 0
+  check(h.d4_task_chrom(ctx.name[0].addr, ctx.name.len - 1), "d4: error creating task")
   var l:uint32
   var r:uint32
-  doAssert h.d4_task_range(l.addr, r.addr) >= 0
+  check(h.d4_task_range(l.addr, r.addr), "d4: error creating task range")
   ctx.count = r - l
   return ctx.pointer
 
@@ -41,7 +41,7 @@ proc process[T](h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer)
   var
     pos: uint32
     r: uint32
-  doAssert h.d4_task_range(pos.addr, r.addr) >= 0
+  check(h.d4_task_range(pos.addr, r.addr), "d4: error creating task range")
   var ctx = cast[ptr task_ctx](task_ctx_p)
 
   let map_fn = cast[ptr d4_call_back[T]](extra_data)[]
@@ -49,14 +49,10 @@ proc process[T](h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer)
 
   while pos < r:
     var count = h.d4_task_read_values(pos, buffer[0].addr, buffer.len)
-    if count < 0:
-      var error = newString(128)
-      echo d4_error_message(error, error.len)
-      return count.cint
-    else:
-      if count.int != buffer.len: buffer.setLen(count)
-      ctx.sum += map_fn(pos, buffer).a
-      pos += count.uint32
+    check(count >= 0, "d4: error reading task values")
+    if count.int != buffer.len: buffer.setLen(count)
+    ctx.sum += map_fn(pos, buffer).a
+    pos += count.uint32
 
   tearDownForeignThreadGc()
   return 0
@@ -87,7 +83,6 @@ proc map*[T](d4:var D4, map_fn:d4_call_back[T], n_cpus:int|uint32=8, chunk_size:
                             part_process_cb: process[T],
                             extra_data: map_fn.unsafeAddr.pointer)
 
-  echo "created task:", task
   var res = d4.c.d4_file_run_task(task.addr)
   if res != 0:
     var error = newString(128)
@@ -95,7 +90,7 @@ proc map*[T](d4:var D4, map_fn:d4_call_back[T], n_cpus:int|uint32=8, chunk_size:
 
 proc fill_chromosomes*(d4:var D4): OrderedTableRef[string, uint32] =
   var mt:d4_file_metadata_t
-  doAssert 0 == d4.c.d4_file_load_metadata(mt.addr)
+  check(d4.c.d4_file_load_metadata(mt.addr), "d4: error loading metadata")
   result = newOrderedTable[string, uint32]()
   for i in 0..<mt.chrom_count.int:
     result[$mt.chrom_name[i]] = cast[ptr UncheckedArray[uint32]](mt.chrom_size)[i]
@@ -130,8 +125,7 @@ proc set_chromosomes*(d4:var D4, chroms: seq[tuple[name:string, length: int]]) =
 
 proc close*(d4: var D4) =
   ## close d4 file and release memory.
-  if 0 != d4.c.d4_close:
-    raise newException(IOError, "error closing d4 file")
+  check(d4.c.d4_close(), "d4: error closing d4 file")
   d4.chromosomes = nil
   d4.c = nil
 
@@ -148,7 +142,7 @@ iterator query*(d4:var D4, chrom:string, start:int|uint32=0, stop:int|uint32=uin
   var stop = min(d4.chromosomes[chrom], stop.uint32)
   var start = start.uint32
 
-  doAssert 0 == d4.c.d4_file_seek(chrom, start)
+  check(d4.c.d4_file_seek(chrom, start), "d4: error in seek")
   var data = newSeq[d4_interval_t](1000)
   var done = false
   var qchrom = newString(20)
