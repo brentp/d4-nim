@@ -178,13 +178,8 @@ proc values*(d4:var D4, chrom: string, pos:uint32, values: var seq[int32]) =
 
 proc write*(d4:var D4, chrom:string, pos:uint32|int, values:var seq[int32]) =
   # write a dense seq of values starting at pos
-  check(d4_file_seek(d4.c, chrom.cstring, pos.uint32), "d4:error seeking to position: " & $pos & " writes must be in order")
+  check(d4_file_seek(d4.c, chrom.cstring, pos.uint32), &"d4:error seeking to position: {chrom}:{pos} writes must be in order")
   check(d4_file_write_values(d4.c, values[0].addr, values.len), "d4:error writing values to position: " & $pos)
-
-proc write*(d4:var D4, chrom:string, values:seq[Interval]) =
-  # write a dense seq of values starting at pos
-  check(d4_file_seek(d4.c, chrom.cstring, 0), "error seeking to chrom:" & chrom)
-  check(d4_file_write_intervals(d4.c, values[0].unsafeAddr, values.len), "d4:error writing values to chrom: " & chrom)
 
 when isMainModule:
   import math
