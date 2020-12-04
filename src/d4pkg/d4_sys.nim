@@ -25,19 +25,19 @@ type
 
 type
   d4_value_map_dict_t* = object
-    size*: csize
+    size*: csize_t
     values*: ptr int32
 
 
 ## !< The metadata of a D4 file
 
 type
-  dict_data_t* = object {.union.}
+  dict_data_t* {.union.} = object
     simple_range*: d4_simple_range_dict_t
     value_map*: d4_value_map_dict_t
 
   d4_file_metadata_t* {.bycopy.} = object
-    chrom_count*: csize        ## !< Number of chromosomes defined in the file
+    chrom_count*: csize_t        ## !< Number of chromosomes defined in the file
     ## !< List of chromosome names
     chrom_name*: cstringArray  ## !< List o fchromosome sizes
     chrom_size*: ptr uint32   ## !< Dictionary type
@@ -69,7 +69,7 @@ proc d4_file_update_metadata*(handle: ptr d4_file_t;
 proc d4_file_metadata_clear*(meta: ptr d4_file_metadata_t) {.inline.} =
   if nil == meta:
     return
-  var i: cint
+  var i: csize_t
   i = 0
   while i < meta.chrom_count:
     free(meta.chrom_name[i])
@@ -88,13 +88,13 @@ proc d4_file_metadata_clear*(meta: ptr d4_file_metadata_t) {.inline.} =
 
 ##  The streaming API
 
-proc d4_file_read_values*(handle: ptr d4_file_t; buf: ptr int32; count: csize): csize_t {.d4.}
+proc d4_file_read_values*(handle: ptr d4_file_t; buf: ptr int32; count: csize_t): csize_t {.d4.}
 proc d4_file_read_intervals*(handle: ptr d4_file_t; buf: ptr d4_interval_t;
-                            count: csize): csize_t {.d4.}
-proc d4_file_write_values*(handle: ptr d4_file_t; buf: ptr int32; count: csize): csize_t {.d4.}
+                            count: csize_t): csize_t {.d4.}
+proc d4_file_write_values*(handle: ptr d4_file_t; buf: ptr int32; count: csize_t): csize_t {.d4.}
 proc d4_file_write_intervals*(handle: ptr d4_file_t; buf: ptr d4_interval_t;
-                             count: csize): csize_t {.d4.}
-proc d4_file_tell*(handle: ptr d4_file_t; name_buf: cstring; buf_size: csize;
+                             count: csize_t): csize_t {.d4.}
+proc d4_file_tell*(handle: ptr d4_file_t; name_buf: cstring; buf_size: csize_t;
                   pos_buf: ptr uint32): cint {.d4.}
 proc d4_file_seek*(handle: ptr d4_file_t; chrom: cstring; pos: uint32): cint {.d4.}
 ##  The parallel API
@@ -113,18 +113,18 @@ type
     part_context_create_cb*: proc (handle: ptr d4_task_part_t; extra_data: pointer): pointer {.cdecl.}
     part_process_cb*: proc (handle: ptr d4_task_part_t; task_context: pointer;
                           extra_data: pointer): cint {.cdecl.}
-    part_finalize_cb*: proc (tasks: ptr d4_task_part_result_t; count: csize;
+    part_finalize_cb*: proc (tasks: ptr d4_task_part_result_t; count: csize_t;
                            extra_data: pointer): cint {.cdecl.}
     extra_data*: pointer
 
 proc d4_file_run_task*(handle: ptr d4_file_t; task: ptr d4_task_desc_t): cint {.d4.}
 proc d4_task_read_values*(task: ptr d4_task_part_t; offset: uint32;
-                         buffer: ptr int32; count: csize): csize_t {.d4.}
+                         buffer: ptr int32; count: csize_t): csize_t {.d4.}
 proc d4_task_write_values*(task: ptr d4_task_part_t; offset: uint32;
-                          data: ptr int32; count: csize): csize_t {.d4.}
+                          data: ptr int32; count: csize_t): csize_t {.d4.}
 proc d4_task_read_intervals*(task: ptr d4_task_part_t; data: ptr d4_interval_t;
-                            count: csize): csize_t {.d4.}
-proc d4_task_chrom*(task: ptr d4_task_part_t; name_buf: cstring; name_buf_size: csize): cint {.d4.}
+                            count: csize_t): csize_t {.d4.}
+proc d4_task_chrom*(task: ptr d4_task_part_t; name_buf: cstring; name_buf_size: csize_t): cint {.d4.}
 proc d4_task_range*(task: ptr d4_task_part_t; left_buf: ptr uint32;
                    right_buf: ptr uint32): cint {.d4.}
 ##  The highlevel API
@@ -134,7 +134,7 @@ proc d4_file_profile_depth_from_bam*(bam_path: cstring; d4_path: cstring;
 ##  Error handling
 
 proc d4_error_clear*() {.d4.}
-proc d4_error_message*(buf: cstring; size: csize): cstring {.d4.}
+proc d4_error_message*(buf: cstring; size: csize_t): cstring {.d4.}
 proc d4_error_num*(): cint {.d4.}
 
 when isMainModule:

@@ -20,7 +20,7 @@ proc `$`(c:task_ctx): string =
 proc check(value:cint|csize_t, msg:string) {.inline.} =
   if value >= 0: return
   var buf = newString(256)
-  stderr.write_line d4_error_message(buf[0].addr, buf.len)
+  stderr.write_line d4_error_message(buf[0].addr, buf.len.csize_t)
   raise newException(ValueError, msg)
 
 proc init(h:ptr d4_task_part_t, extra_data:pointer): pointer {.cdecl.} =
@@ -113,7 +113,7 @@ proc set_chromosomes*(d4:var D4, chroms: seq[tuple[name:string, length: int]]) =
 
   let clist = chrom_list.allocCStringArray
   var hdr = d4_file_metadata_t(
-    chrom_count: chroms.len.csize,
+    chrom_count: chroms.len.csize_t,
     chrom_name: clist,
     chrom_size: size_list[0].addr,
     dict_type: D4_DICT_SIMPLE_RANGE,
@@ -169,22 +169,22 @@ proc values*(d4:var D4, chrom:string, start:int|uint32=0, stop:int|uint32=uint32
   check(d4_file_seek(d4.c, chrom.cstring, start.uint32), "d4:error seeking to position: " & $start)
 
   result = newSeqUninitialized[int32](stop - start.uint32)
-  check(d4.c.d4_file_read_values(result[0].addr, result.len), "d4: error reading values")
+  check(d4.c.d4_file_read_values(result[0].addr, result.len.csize_t), "d4: error reading values")
 
 proc values*(d4:var D4, chrom: string, pos:uint32, values: var seq[int32]) =
   # extract values from pos to pos + values.len without allocating memory.
   check(d4_file_seek(d4.c, chrom.cstring, pos), "d4:error seeking to position: " & $pos)
-  check(d4.c.d4_file_read_values(values[0].addr, values.len), "d4: error reading values")
+  check(d4.c.d4_file_read_values(values[0].addr, values.len.csize_t), "d4: error reading values")
 
 proc write*(d4:var D4, chrom:string, pos:uint32|int, values:var seq[int32]) =
   # write a dense seq of values starting at pos
   check(d4_file_seek(d4.c, chrom.cstring, pos.uint32), &"d4:error seeking to position: {chrom}:{pos} writes must be in order")
-  check(d4_file_write_values(d4.c, values[0].addr, values.len), "d4:error writing values to position: " & $pos)
+  check(d4_file_write_values(d4.c, values[0].addr, values.len.csize_t), "d4:error writing values to position: " & $pos)
 
 proc write*(d4:var D4, chrom:string, values:seq[Interval]) =
   # write a dense seq of values starting at pos
   check(d4_file_seek(d4.c, chrom.cstring, 0), "error seeking to chrom:" & chrom)
-  check(d4_file_write_intervals(d4.c, values[0].unsafeAddr, values.len), "d4:error writing values to chrom: " & chrom)
+  check(d4_file_write_intervals(d4.c, values[0].unsafeAddr, values.len.csize_t), "d4:error writing values to chrom: " & chrom)
 
 
 when isMainModule:
