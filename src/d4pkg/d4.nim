@@ -162,18 +162,18 @@ iterator query*(d4:var D4, chrom:string, start:int|uint32=0, stop:int|uint32=uin
 
     if count.int < data.len: break
 
-proc values*(d4:var D4, chrom:string, start:int|uint32=0, stop:int|uint32=uint32.high): seq[int32] =
+proc values*(d4:var D4, chrom:string, start:int|uint32=0, stop:int|uint32=uint32.high): seq[int32] {.noInit.} =
   ## extract values for the requested region.
 
   var stop = min(d4.chromosomes[chrom], stop.uint32)
-  check(d4_file_seek(d4.c, chrom.cstring, start.uint32), "d4:error seeking to position: " & $start)
+  check(d4_file_seek(d4.c, chrom.cstring, start.uint32), &"d4:error seeking to position: {chrom}:{start}")
 
   result = newSeqUninitialized[int32](stop - start.uint32)
-  check(d4.c.d4_file_read_values(result[0].addr, result.len.csize_t), "d4: error reading values")
+  check(d4.c.d4_file_read_values(result[0].addr, result.len.csize_t), &"d4: error reading values at {chrom}:{start}")
 
 proc values*(d4:var D4, chrom: string, pos:uint32, values: var seq[int32]) =
   # extract values from pos to pos + values.len without allocating memory.
-  check(d4_file_seek(d4.c, chrom.cstring, pos), "d4:error seeking to position: " & $pos)
+  check(d4_file_seek(d4.c, chrom.cstring, pos), &"d4:error seeking to position: {chrom}:{pos}")
   check(d4.c.d4_file_read_values(values[0].addr, values.len.csize_t), "d4: error reading values")
 
 proc write*(d4:var D4, chrom:string, pos:uint32|int, values:var seq[int32]) =

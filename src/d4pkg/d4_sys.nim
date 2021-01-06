@@ -67,7 +67,7 @@ proc d4_file_update_metadata*(handle: ptr d4_file_t;
                              metadata: ptr d4_file_metadata_t): cint {.d4.}
 
 proc d4_file_metadata_clear*(meta: ptr d4_file_metadata_t) {.inline.} =
-  if nil == meta:
+  if meta == nil:
     return
   var i: csize_t
   i = 0
