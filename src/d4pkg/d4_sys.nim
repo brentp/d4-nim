@@ -42,6 +42,7 @@ type
     chrom_name*: cstringArray  ## !< List o fchromosome sizes
     chrom_size*: ptr uint32   ## !< Dictionary type
     dict_type*: d4_dict_type_t ## !< Dictionary data
+    denominator*: float64
     dict_data*: dict_data_t
 
 

@@ -60,7 +60,7 @@ proc process[T](h: ptr d4_task_part_t, task_ctx_p: pointer, extra_data: pointer)
 proc map*[T](d4:var D4, map_fn:d4_call_back[T], n_cpus:int|uint32=8, chunk_size:int|uint32=10_000_000): seq[T] =
   var outer_result: seq[T]
 
-  proc clean(d4_tasks: ptr d4_task_part_result_t, task_count: csize, extra_data: pointer): cint {.cdecl.} =
+  proc clean(d4_tasks: ptr d4_task_part_result_t, task_count: csize_t, extra_data: pointer): cint {.cdecl.} =
     var sum: float64
     var count: float64
 
