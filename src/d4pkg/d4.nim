@@ -117,6 +117,7 @@ proc set_chromosomes*(d4:var D4, chroms: seq[tuple[name:string, length: int]]) =
     chrom_name: clist,
     chrom_size: size_list[0].addr,
     dict_type: D4_DICT_SIMPLE_RANGE,
+    denominator: 1,
     dict_data: dict_data_t(simple_range: d4_simple_range_dict_t(`low`: 0'i32, `high`: 128'i32))
     )
 

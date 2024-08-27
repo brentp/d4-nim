@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.0.3"
+version       = "0.0.4"
 author        = "Brent Pedersen"
 description   = "bindings to d4 by Hao"
 license       = "MIT"
