@@ -14,5 +14,5 @@ srcDir = "src"
 import os, strutils
 
 task test, "run the tests":
-  exec "nim c -d:useSysAssert -d:useGcAssert --lineDir:on --debuginfo -r src/d4pkg/d4.nim"
+  exec "nim c --mm:refc -d:useSysAssert -d:useGcAssert --lineDir:on --debuginfo -r src/d4pkg/d4.nim"
 

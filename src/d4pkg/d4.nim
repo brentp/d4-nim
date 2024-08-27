@@ -211,6 +211,7 @@ when isMainModule:
 
   #d4f.close
 
+  ]# 
 
   doAssert d4f.open("test.d4", mode="w")
   d4f.set_chromosomes(@[(name: "chr1", length: 50), (name: "chr2", length: 60)])
@@ -230,7 +231,6 @@ when isMainModule:
 
   d4f.close
 
-  ]# 
   doAssert d4f.open("test.d4", mode="r")
   echo d4f.chromosomes
 
