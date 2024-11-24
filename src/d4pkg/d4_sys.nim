@@ -63,6 +63,9 @@ proc d4_open*(path: cstring; mode: cstring): ptr d4_file_t {.d4.}
 ## !< Close a opened D4 file
 
 proc d4_close*(handle: ptr d4_file_t): cint {.d4.}
+
+## !< Build sfi d4 index
+proc d4_index_build_sfi*(path: cstring): cint {.d4.}
 proc d4_file_load_metadata*(handle: ptr d4_file_t; buf: ptr d4_file_metadata_t): cint {.d4.}
 proc d4_file_update_metadata*(handle: ptr d4_file_t;
                              metadata: ptr d4_file_metadata_t): cint {.d4.}
@@ -166,7 +169,7 @@ when isMainModule:
   var done = false
 
   while not done:
-    echo fp.d4_file_tell(x, x.len, pos.addr)
+    # echo fp.d4_file_tell(x, x.len, pos.addr)
     echo x, " ", requested_chrom
     var same = true
     for i, c in requested_chrom:

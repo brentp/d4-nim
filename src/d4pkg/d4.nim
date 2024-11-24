@@ -102,6 +102,9 @@ proc open*(d4:var D4, path:string, mode="r"): bool {.discardable.} =
     d4.chromosomes = d4.fill_chromosomes
   return d4.c != nil
 
+proc index_build_sfi*(path: string): bool {.discardable.} =
+  return d4_index_build_sfi(path.cstring) == 0
+
 proc set_chromosomes*(d4:var D4, chroms: seq[tuple[name:string, length: int]]) =
   var chrom_list = newSeq[string](chroms.len)
   var size_list = newSeq[uint32](chroms.len)
@@ -241,3 +244,6 @@ when isMainModule:
   var o = d4f.values("chr2", 0, 60)
   echo o
   doAssert o[12] == 2'i32
+  doAssert d4.index_build_sfi("test.d4")
+  
+  
